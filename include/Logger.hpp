@@ -39,8 +39,20 @@ namespace Logger {
 	template <typename eDebugChannel>
 	struct LoggerHelper {
 		public:
+			/**
+			 *	Constructor
+			 *	@param logger A reference to the logger that created this class
+			 *	@param channel The channel on which data was recieved
+			 *	@param loglevel The current loglevel
+			 *	@param noop True if data should be ignored
+			 */
 			LoggerHelper( Logger<eDebugChannel>& logger, eDebugChannel channel, size_t loglevel, bool noop ): logger( logger ), channel( channel ), loglevel( loglevel ), noop( noop ){}
 
+			/**
+			 *	Writes data
+			 *	@param m The data to be written
+			 *	@return this
+			 */
 			template <typename Message>
 			std::enable_if_t<!std::is_same_v<eDebugChannel, Message>, LoggerHelper>
 			operator<<( Message&& m ){
@@ -49,6 +61,11 @@ namespace Logger {
 				return *this;
 			}
 
+			/**
+			 *	Recreates the helper class to acommodate for writing to a new channel
+			 *	@param c The new channel
+			 *	@return A new helper class instance that expects a new Loglevel
+			 */
 			template <typename Message>
 			std::enable_if_t<std::is_same_v<eDebugChannel, Message>, PartialLoggerHelper<eDebugChannel>>
 			operator<<( Message c ){
@@ -68,8 +85,18 @@ namespace Logger {
 	template <typename eDebugChannel>
 	struct PartialLoggerHelper {
 		public:
+			/**
+			 *	Constructor
+			 *	@param logger A reference to the object that created this object
+			 *	@param channel The channel that data is recieved from
+			 */
 			PartialLoggerHelper( Logger<eDebugChannel>& logger, eDebugChannel channel ): logger( logger ), channel( channel ){}
 
+			/**
+			 *	Creates a LoggerHelper and starts printing to the console
+			 *	@param l The loglevel that should be used
+			 *	@return A new LoggerHelper
+			 */
 			template <typename LogLevelType>
 			std::enable_if_t<std::is_convertible_v<LogLevelType, size_t>, LoggerHelper<eDebugChannel>>
 			operator<<( LogLevelType l ){
@@ -87,6 +114,11 @@ namespace Logger {
 				return LoggerHelper<eDebugChannel>( logger, channel, static_cast<size_t>( l ), no_write );
 			}
 
+			/**
+			 *	Switches the channel to the newly requested one
+			 *	@param c The new channel
+			 *	@return this
+			 */
 			template <typename LogLevelType>
 			std::enable_if_t<std::is_same_v<std::remove_cvref_t<LogLevelType>, std::remove_cvref_t<eDebugChannel>>, PartialLoggerHelper&> operator<<( LogLevelType c ){
 				channel = c;
@@ -94,8 +126,8 @@ namespace Logger {
 			}
 
 		private:
-			Logger<eDebugChannel>& logger;
-			eDebugChannel channel;
+			Logger<eDebugChannel>& logger;	/**< A reference to the original class */
+			eDebugChannel channel;			/**< The channel on which data will be recieved */
 	};
 
 	/**
@@ -103,25 +135,48 @@ namespace Logger {
 	 */
 	template <typename eDebugChannel>
 	struct Logger {
-		Logger( std::ostream& os = std::cout,
+		/**
+		 *	Constructor
+		 *	@param os The stream that should be written to (defaults to std::cout)
+		 *	@param loglevel_to_string A method that should be used to turn loglevels into strings (Defaults to integer representation)
+		 *	@param channel_to_string A method that should be used to turn channels into strings( Defaults to integer representation)
+		 */
+		Logger( std::ostream& out = std::cout,
 			std::function<std::string( eDebugChannel )> channel_to_string =
 				[]( eDebugChannel e ){ return std::to_string( static_cast<std::underlying_type_t<eDebugChannel>>( e ));},
 			std::function<std::string( size_t )> loglevel_to_string =
 				[]( size_t l ){ return std::to_string( l );})
-			: out( os ), enabled_debug(), min_log_level(), channel_to_string( channel_to_string ), loglevel_to_string( loglevel_to_string ){}
+			: out( out ), enabled_debug(), min_log_level(), channel_to_string( channel_to_string ), loglevel_to_string( loglevel_to_string ){}
 
+		/**
+		 *	Deconstructor
+		 *	Writes a newline
+		 */
 		~Logger(){
 			out << "\n";
 		}
 
+		/**
+		 *	Creates a new PartialLoggerHelper used to write things
+		 *	@param channel The channel on which data will be recieved
+		 *	@return A new instance of a PartialLoggerHelper
+		 */
 		PartialLoggerHelper<eDebugChannel> operator<<( const eDebugChannel& channel ){
 			return PartialLoggerHelper<eDebugChannel>( *this, channel );
 		}
 
+		/**
+		 *	Enables a channel to be passed to out
+		 *	@param e The channel that should be enabled
+		 */
 		void enable( eDebugChannel e ){
 			enabled_debug.insert( e );
 		}
 
+		/**
+		 *	Disables a channel
+		 *	@param e The channel that should no longer be written to out
+		 */
 		void disable( eDebugChannel e ){
 			enabled_debug.erase( e );
 		}
