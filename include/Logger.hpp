@@ -86,6 +86,9 @@ namespace Logger {
 				return logger << c;
 			}
 
+			LoggerHelper operator=( const LoggerHelper& ) = delete;
+			LoggerHelper( const LoggerHelper& ) = delete;
+
 		private:
 			Logger<eDebugChannel>& logger;	/**< Reference to the original logger class */
 			eDebugChannel channel;			/**< Channel written to */
