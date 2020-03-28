@@ -47,6 +47,14 @@ namespace Logger {
 			 *	@param noop True if data should be ignored
 			 */
 			LoggerHelper( Logger<eDebugChannel>& logger, eDebugChannel channel, size_t loglevel, bool noop ): logger( logger ), channel( channel ), loglevel( loglevel ), noop( noop ){}
+			~LoggerHelper(){
+				if( noop )
+					return;
+				#ifdef COLOR_CONSOLE
+				logger.out << "\033[0m";
+				#endif //COLOR_CONSOLE
+				logger.out << "\n";
+			}
 
 			/**
 			 *	Writes data
@@ -54,7 +62,7 @@ namespace Logger {
 			 *	@return this
 			 */
 			template <typename Message>
-			std::enable_if_t<!std::is_same_v<eDebugChannel, Message>, LoggerHelper>
+			std::enable_if_t<!std::is_same_v<eDebugChannel, Message>, LoggerHelper&>
 			operator<<( Message&& m ){
 				if( !noop )
 					logger.out << m;
@@ -69,6 +77,12 @@ namespace Logger {
 			template <typename Message>
 			std::enable_if_t<std::is_same_v<eDebugChannel, Message>, PartialLoggerHelper<eDebugChannel>>
 			operator<<( Message c ){
+				if( !noop ){
+					#ifdef COLOR_CONSOLE
+					logger.out << "\033[0m";
+					#endif //COLOR_CONSOLE
+					logger.out << "\n";
+				}
 				return logger << c;
 			}
 
@@ -108,7 +122,7 @@ namespace Logger {
 					struct tm * timeinfo = localtime( &now );
 					char buf[20];
 					strftime( buf, 20, "%F %T", timeinfo );
-					logger.out << "\n[" << logger.loglevel_to_string( l ) << "] " << buf << " " << logger.channel_to_string( channel ) << ": ";
+					logger.out << "[" << logger.loglevel_to_string( l ) << "] " << buf << " " << logger.channel_to_string( channel ) << ": ";
 				}
 
 				return LoggerHelper<eDebugChannel>( logger, channel, static_cast<size_t>( l ), no_write );
